@@ -52,23 +52,51 @@ class gen3env(gym.Env):
 
         return end_peg_dis,peg_hole_dis,grab_dis
 
-    def reach_dis(self,obs):
+    def reach_reward(self,obs):
         end_peg_dis,_,_=self.compute_dis(obs)
         reach_reward=-end_peg_dis
 
         return reach_reward
-
+    def grab_reward(self,obs):
+            pass
     def insert_reward(self,obs):
         pass
 
-    def grab_reward(self,obs):
-        pass
+    
     
     
 
 
-    def compute_reward():
-        pass
+    def compute_reward(self,action,obs):
+        end_peg_dis,peg_hole_dis,grab_dis=self.compute_dis(obs)
+        peg_pose=obs[4:7]
+        left_finger_pose=self.robot.get_link_pose('left_inner_finger')
+        right_finger_pose=self.robot.get_link_pose('right_inner_finger')
+        finger_pose=(left_finger_pose+right_finger_pose)/2
+        def is_pick():
+            return (finger_pose[2]-peg_pose[2])<0.01
+        self.is_pick=is_pick()
+        def is_drop():
+            return ((peg_hole_dis>0.05)and (grab_dis>0.05))
+        
+        def reach_reward():
+            reach_reward=-end_peg_dis
+            if grab_dis<0.05:
+                reach_reward+=min(action[3],1)/50
+            
+            return reach_reward,grab_dis
+        
+        def pick_reward():
+            if self.is_pick and not (is_drop()):
+                return 10
+            else:
+                return 0
+
+        def insert_reward():
+            pass
+
+
+        
 
     def step(self,action):
         pass
