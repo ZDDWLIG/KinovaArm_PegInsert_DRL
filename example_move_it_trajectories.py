@@ -53,11 +53,10 @@ import actionlib
 from std_srvs.srv import Empty
 from tf import TransformListener
 from robot import Robot
+from task import peg_in
 
 
 
-   
-  
 def main():
   arm = Robot()
 
@@ -66,8 +65,8 @@ def main():
       rospy.delete_param("/kortex_examples_test_results/moveit_general_python")
   except:
       pass
-  # arm.remove_scene()
-  # arm.init_scene(hole_pose=[1,0.,0.])
+  arm.remove_scene()
+  arm.init_scene(peg_pose=[0.1,0,0.3],hole_pose=[1.,-0.2,0.3])
   # arm.remove_scene()
   # arm.remove_peg()
   # arm.init_peg(obj_pose=[1,-0.066070,0.433983])
@@ -83,20 +82,19 @@ def main():
   # arm.reach_gripper_position(0)
   # opening=arm.get_gripper_position()
   # print(opening)
-  pose_x,pose_y,pose_z=arm.get_link_pose('left_inner_finger')
-  print([pose_x,pose_y,pose_z])
+  # pose_x,pose_y,pose_z=arm.get_link_pose('left_inner_finger')
+  # print([pose_x,pose_y,pose_z])
 #screw task
   # if success:
   #    success&=screw(robot=arm,nut_pose=[0.42,0.,-0.185],target_pose=[0.1,0.15,0.23])
-
   # arm.move(pose=[0.2,0.3,0.1])
   # arm.reach_named_position('home')
 
 #peg in hole task
-  # if success:
-  #    success=peg_in(robot=example,peg_pose=[0.35,0,-0.16],hole_pose=[0.15,0.1,0.1])
-  # gripper_pose=arm.get_gripper_position()
-  # print(gripper_pose)
+  if success:
+     success=peg_in(robot=arm,peg_pose=[0.3,0,0.5],hole_pose=[1.,-0.2,0.5])
+  gripper_pose=arm.get_gripper_position()
+  print(gripper_pose)
   # For testing purposes
   rospy.set_param("/kortex_examples_test_results/moveit_general_python", success)
 
