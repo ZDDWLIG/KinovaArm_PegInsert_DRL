@@ -156,7 +156,7 @@ class Robot(object):
   def init_scene(self,peg_pose=[0.,0.,0.],hole_pose=[0.,0.,0.]):
     # self.reach_named_position('retract')
     # rospy.wait_for_service("gazebo/spawn_sdf_model",timeout=5)
-    peg_orientation = Quaternion(0,0,0,1)
+    peg_orientation = Quaternion(1,0,0,0)
     peg_pose=Pose(Point(peg_pose[0],peg_pose[1],peg_pose[2]),peg_orientation)
     peg_sdf_path='/home/gao/catkin_workspace/peg/model.sdf'
     peg_xml= open(peg_sdf_path,'r').read()
@@ -185,7 +185,7 @@ class Robot(object):
     return obj_x,obj_y,obj_z
   
 
- #get link(finger) pose
+  #get link(finger) pose
   def get_link_pose(self,link_name):
     get_pose=GetLinkStateRequest()
     get_pose.link_name=link_name
