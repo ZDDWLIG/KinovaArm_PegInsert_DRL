@@ -66,9 +66,9 @@ def peg_in(robot,peg_pose,hole_pose,tolerance=0.001,success=True):
    rospy.loginfo('Go back to initial pose')
   #  success &= robot.reach_named_position("retract")
   #  print(joint_positions)geometry_msgs.msg.
-   success&=robot.reach_named_position('retract')
-   success&=robot.reach_joint_angles(j5=-pi/36)
-   print(success)
+   # success&=robot.reach_named_position('retract')
+   # success&=robot.reach_joint_angles(j5=-pi/36)
+   # print(success)
    success&=robot.reach_gripper_position(0)
    success&=robot.move(pose=[peg_pose[0],peg_pose[1],peg_pose[2]],tolerance=tolerance)
    
