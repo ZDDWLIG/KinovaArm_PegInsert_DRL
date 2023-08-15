@@ -54,19 +54,19 @@ from std_srvs.srv import Empty
 from tf import TransformListener
 from robot import Robot
 from task import peg_in
-
+from gen3env import gen3env
 
 
 def main():
-  arm = Robot()
+  # arm = Robot()
 
-  success = arm.is_init_success
-  try:
-      rospy.delete_param("/kortex_examples_test_results/moveit_general_python")
-  except:
-      pass
-  arm.remove_scene()
-  arm.init_scene(peg_pose=[0.1,0,0.3],hole_pose=[1.,-0.2,0.3])
+  # success = arm.is_init_success
+  # try:
+  #     rospy.delete_param("/kortex_examples_test_results/moveit_general_python")
+  # except:
+  #     pass
+  # arm.remove_scene()
+  # arm.init_scene(peg_pose=[0.1,0,0.3],hole_pose=[1.,-0.2,0.3])
   # arm.remove_scene()
   # arm.remove_peg()
   # arm.init_peg(obj_pose=[1,-0.066070,0.433983])
@@ -90,16 +90,28 @@ def main():
   # arm.move(pose=[0.2,0.3,0.1])
   # arm.reach_named_position('home')
 
+
 #peg in hole task
-  if success:
-     success=peg_in(robot=arm,peg_pose=[0.3,0,0.5],hole_pose=[1.,-0.2,0.5])
-  gripper_pose=arm.get_gripper_position()
-  print(gripper_pose)
+  # if success:
+  #    success=peg_in(robot=arm,peg_pose=[0.3,0,1],hole_pose=[0.5,-0.2,1])
+  # gripper_pose=arm.get_gripper_position()
+  # print(gripper_pose)
   # For testing purposes
-  rospy.set_param("/kortex_examples_test_results/moveit_general_python", success)
+  # env=gen3env()
+  # action=env.action_space.sample()
+  # arm.move(pose=[])
+  # rospy.set_param("/kortex_examples_test_results/moveit_general_python", success)
 
-  if not success:
-      rospy.logerr("The example encountered an error.")
+  # if not success:
+  #     rospy.logerr("The example encountered an error.")
+  env=gen3env()
+  env.reset()
+  action=env.action_space.sample()
+  next_obs,reward,done,info=env.step(action)
+  print('obs=',next_obs)
+  print('reward=',reward)
+  print('done=',done)
 
+  
 if __name__ == '__main__':
   main()
