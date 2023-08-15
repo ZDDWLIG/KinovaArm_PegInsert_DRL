@@ -28,7 +28,32 @@ class gen3env(gym.Env):
         self.observation_space=spaces.Box(low=np.array(obs_low),high=np.array(obs_high),dtype=np.float64)#end_xyz+gripper+peg_xyz+hole_xyz
 
     def reset(self):
-        self.robot.init_scene()
+        self.robot.remove_scene()
+        self.robot.init_scene(peg_pose=[0.1,0,0.3],hole_pose=[1.,-0.2,0.3])
+        obs=self.get_obs()
+
+        return obs
+    #get distance
+    def compute_dis(self,obs):
+        end_pose=obs[:3]
+        peg_pose=obs[4:7]
+        # print('peg',peg_pose,type(peg_pose))
+        hole_pose=obs[7:]
+        end_peg_dis=np.linalg.norm(end_pose-peg_pose)
+        peg_hole_dis=np.linalg.norm(peg_pose-hole_pose)
+        left_finger_pose=self.robot.get_link_pose('left_inner_finger')
+        right_finger_pose=self.robot.get_link_pose('right_inner_finger')
+        finger_pose=(left_finger_pose+right_finger_pose)/2       
+        # print('finger',finger_pose,type(finger_pose))
+        grab_dis=np.linalg.norm(peg_pose-finger_pose)
+
+        return end_peg_dis,peg_hole_dis,grab_dis
+        
+    def do_sim(self,action):
+        self.robot.move(pose=action[:-1])
+        self.robot.reach_gripper_position(action[-1])
+
+    def get_obs(self):
         end_effect_pose=self.robot.get_cartesian_pose()
         end_x=end_effect_pose.position.x
         end_y=end_effect_pose.position.y
@@ -38,41 +63,14 @@ class gen3env(gym.Env):
         hole_x,hole_y,hole_z=self.robot.get_obj_pose('hole')
         obs=np.array([end_x,end_y,end_z,gripper_opening,peg_x,peg_y,peg_z,hole_x,hole_y,hole_z])
         return obs 
-    #get distance
-    def compute_dis(self,obs):
-        end_pose=obs[:4]
-        peg_pose=obs[4:7]
-        hole_pose=obs[7:]
-        end_peg_dis=np.linalg.norm(end_pose-peg_pose)
-        peg_hole_dis=np.linalg.norm(peg_pose-hole_pose)
-        left_finger_pose=self.robot.get_link_pose('left_inner_finger')
-        right_finger_pose=self.robot.get_link_pose('right_inner_finger')
-        finger_pose=(left_finger_pose+right_finger_pose)/2
-        grab_dis=np.linalg.norm(peg_pose,finger_pose)
-
-        return end_peg_dis,peg_hole_dis,grab_dis
-
-    def reach_reward(self,obs):
-        end_peg_dis,_,_=self.compute_dis(obs)
-        reach_reward=-end_peg_dis
-
-        return reach_reward
-    def grab_reward(self,obs):
-            pass
-    def insert_reward(self,obs):
-        pass
-
     
-    
-    
-
-
     def compute_reward(self,action,obs):
         end_peg_dis,peg_hole_dis,grab_dis=self.compute_dis(obs)
         peg_pose=obs[4:7]
         left_finger_pose=self.robot.get_link_pose('left_inner_finger')
         right_finger_pose=self.robot.get_link_pose('right_inner_finger')
         finger_pose=(left_finger_pose+right_finger_pose)/2
+        
         def is_pick():
             return (finger_pose[2]-peg_pose[2])<0.01
         self.is_pick=is_pick()
@@ -93,14 +91,38 @@ class gen3env(gym.Env):
                 return 0
 
         def insert_reward():
-            pass
+            # c1 = 1000
+            # c2 = 0.01
+            # c3 = 0.001
+            cond=self.is_pick and not(is_drop())and (grab_dis<0.05)
+            if cond :
+                insert_reward=-peg_hole_dis
+            else:
+                insert_reward=-100
+
+            return [insert_reward,peg_hole_dis]
+        reach_rew,grab_dis=reach_reward()
+        pick_rew=pick_reward()
+        insert_rew,peg_hole_dis=insert_reward()
+        reward=reach_rew+pick_rew+insert_rew
+        return[reward,reach_rew,pick_rew,insert_rew,peg_hole_dis]        
 
 
         
 
     def step(self,action):
-        pass
-
+        self.do_sim(action)
+        obs=self.get_obs()
+        reward,reach_rew,pick_rew,insert_rew,peg_hole_dis=self.compute_reward(action,obs)
+        info={
+            "reward":reward,
+            "reach_rew":reach_rew,
+            "pick_rew":pick_rew,
+            "insert_rew":insert_rew,
+            "peg_hole_dis":peg_hole_dis
+        }
+        done=bool(peg_hole_dis<0.005)
+        return obs,reward,done,info
         
         
 
