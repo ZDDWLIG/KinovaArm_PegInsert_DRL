@@ -56,7 +56,7 @@ class Robot(object):
         gripper_group_name = "gripper"
         self.gripper_group = moveit_commander.MoveGroupCommander(gripper_group_name, ns=rospy.get_namespace())
 
-      rospy.loginfo("Initializing node in namespace " + rospy.get_namespace())
+      # rospy.loginfo("Initializing node in namespace " + rospy.get_namespace())
     except Exception as e:
       print (e)
       self.is_init_success = False
@@ -68,7 +68,7 @@ class Robot(object):
     arm_group = self.arm_group
     
     # Going to one of those targets
-    rospy.loginfo("Going to named target " + target)
+    # rospy.loginfo("Going to named target " + target)
     # Set the target
     arm_group.set_named_target(target)
     # Plan the trajectory
@@ -83,8 +83,8 @@ class Robot(object):
 
     # Get the current joint positions
     joint_positions = arm_group.get_current_joint_values()
-    rospy.loginfo("Printing current joint positions before movement :")
-    for p in joint_positions: rospy.loginfo(p)
+    # rospy.loginfo("Printing current joint positions before movement :")
+    # for p in joint_positions: rospy.loginfo(p)
 
     # Set the goal joint tolerance
     self.arm_group.set_goal_joint_tolerance(tolerance)
@@ -105,8 +105,8 @@ class Robot(object):
 
     # Show joint positions after movement
     new_joint_positions = arm_group.get_current_joint_values()    
-    rospy.loginfo("Printing current joint positions after movement :")
-    for p in new_joint_positions: rospy.loginfo(p)
+    # rospy.loginfo("Printing current joint positions after movement :")
+    # for p in new_joint_positions: rospy.loginfo(p)
     return success
 
   def get_cartesian_pose(self):
@@ -114,8 +114,8 @@ class Robot(object):
 
     # Get the current pose and display it
     pose = arm_group.get_current_pose()
-    rospy.loginfo("Actual cartesian pose is : ")
-    rospy.loginfo(pose.pose)
+    # rospy.loginfo("Actual cartesian pose is : ")
+    # rospy.loginfo(pose.pose)
 
     return pose.pose
 
@@ -149,9 +149,10 @@ class Robot(object):
     current_pose.position.y=pose[1]
     current_pose.position.z=pose[2]
     arm_group.set_pose_target(current_pose)
-    rospy.loginfo("Planning and going to the Cartesian Pose")
+    # rospy.loginfo("Planning and going to the Cartesian Pose")
     return arm_group.go(wait=True)
   
+
   #initial arm peg and hole
   def init_scene(self,peg_pose=[0.,0.,0.],hole_pose=[0.,0.,0.]):
     # self.reach_named_position('retract')
