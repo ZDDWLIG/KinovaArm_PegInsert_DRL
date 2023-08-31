@@ -155,7 +155,7 @@ class Robot(object):
 
   #initial arm peg and hole
   def init_scene(self,peg_pose=[0.,0.,0.],hole_pose=[0.,0.,0.]):
-    # self.reach_named_position('retract')
+    self.reach_named_position('home')
     # rospy.wait_for_service("gazebo/spawn_sdf_model",timeout=5)
     peg_orientation = Quaternion(1,0,0,0)
     peg_pose=Pose(Point(peg_pose[0],peg_pose[1],peg_pose[2]),peg_orientation)
