@@ -54,64 +54,22 @@ from std_srvs.srv import Empty
 from tf import TransformListener
 from robot import Robot
 from task import peg_in
-from gen3env import gen3env
+from Gen3Env.gen3env import gen3env
+import gym
+from stable_baselines3  import TD3
 
 
 def main():
-  # arm = Robot()
-
-  # success = arm.is_init_success
-  # try:
-  #     rospy.delete_param("/kortex_examples_test_results/moveit_general_python")
-  # except:
-  #     pass
-  # arm.remove_scene()
-  # arm.init_scene(peg_pose=[0.1,0,0.3],hole_pose=[1.,-0.2,0.3])
-  # arm.remove_scene()
-  # arm.remove_peg()
-  # arm.init_peg(obj_pose=[1,-0.066070,0.433983])
-  # print(success)
-  # example.move(pose=[0.3,0.3,0.7],ori_pose=[0.2,0.,0.,0.],is_add=False)
-  
-#pick&place task
-  # if success:
-  #    success=pick_place(robot=arm,pick_pose=[0.42,0.1,-0.185],place_pose=[-0.2,-0.2,0],joint_rota=pi/2,success=success)
- 
-  # arm.move(pose=[0.3,0.2,0.6])
-  # gen3_pose=arm.get_obj_pose('peg')
-  # arm.reach_gripper_position(0)
-  # opening=arm.get_gripper_position()
-  # print(opening)
-  # pose_x,pose_y,pose_z=arm.get_link_pose('left_inner_finger')
-  # print([pose_x,pose_y,pose_z])
-#screw task
-  # if success:
-  #    success&=screw(robot=arm,nut_pose=[0.42,0.,-0.185],target_pose=[0.1,0.15,0.23])
-  # arm.move(pose=[0.2,0.3,0.1])
-  # arm.reach_named_position('home')
-
-
-#peg in hole task
-  # if success:
-  #    success=peg_in(robot=arm,peg_pose=[0.3,0,1],hole_pose=[0.5,-0.2,1])
-  # gripper_pose=arm.get_gripper_position()
-  # print(gripper_pose)
-  # For testing purposes
-  # env=gen3env()
-  # action=env.action_space.sample()
-  # arm.move(pose=[])
-  # rospy.set_param("/kortex_examples_test_results/moveit_general_python", success)
-
-  # if not success:
-  #     rospy.logerr("The example encountered an error.")
-  env=gen3env()
-  env.reset()
-  action=env.action_space.sample()
-  next_obs,reward,done,info=env.step(action)
-  print('obs=',next_obs)
-  print('reward=',reward)
-  print('done=',done)
-
+  # env=gym.make(id='Pendulum-v1')
+  env=gym.make(id='peg_in_hole-v0')
+  # env.reset()
+  # for ep in range(100):
+  #   action=env.action_space.sample()
+  #   next_obs,reward,done,info=env.step(action=action)
+  #   print('reward={}'.format(reward))
+  # env.robot.reach_named_position('home')
+  model=TD3('MlpPolicy', env, verbose=1)
+  model.learn(total_timesteps=1000)
   
 if __name__ == '__main__':
   main()
