@@ -17,9 +17,12 @@ from robot import Robot
 
 class gen3env(gym.Env):
     metadata={'render.modes':['human','rgb_array']}
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self):
+        super(gen3env,self).__init__()
         self.robot=Robot()
+        self.peg_pose=[0.1,0,0.3]
+        self.hole_pose=[1.,-0.2,0.3]
+        self.info=None
         action_low=[-1.,-1.,-1.,-1.]
         action_high=[1.,1.,1.,1.]
         obs_low=[-1.,-1.,-1.,-1.,-1.,-1.,-1.,-1.,-1.,-1.]
@@ -28,9 +31,11 @@ class gen3env(gym.Env):
         self.observation_space=spaces.Box(low=np.array(obs_low),high=np.array(obs_high),dtype=np.float64)#end_xyz+gripper+peg_xyz+hole_xyz
 
     def reset(self):
+        
         self.robot.remove_scene()
-        self.robot.init_scene(peg_pose=[0.1,0,0.3],hole_pose=[1.,-0.2,0.3])
+        self.robot.init_scene(peg_pose=self.peg_pose,hole_pose=self.hole_pose)
         obs=self.get_obs()
+        self.render()
 
         return obs
     #get distance
@@ -50,6 +55,7 @@ class gen3env(gym.Env):
         return end_peg_dis,peg_hole_dis,grab_dis
         
     def do_sim(self,action):
+        action,_=self.scale(action=action)
         self.robot.move(pose=action[:-1])
         self.robot.reach_gripper_position(action[-1])
 
@@ -98,7 +104,7 @@ class gen3env(gym.Env):
             if cond :
                 insert_reward=-peg_hole_dis
             else:
-                insert_reward=-100
+                insert_reward=-10
 
             return [insert_reward,peg_hole_dis]
         reach_rew,grab_dis=reach_reward()
@@ -113,6 +119,8 @@ class gen3env(gym.Env):
     def step(self,action):
         self.do_sim(action)
         obs=self.get_obs()
+        # print('='*50)
+        # print('before scale',obs)
         reward,reach_rew,pick_rew,insert_rew,peg_hole_dis=self.compute_reward(action,obs)
         info={
             "reward":reward,
@@ -122,7 +130,37 @@ class gen3env(gym.Env):
             "peg_hole_dis":peg_hole_dis
         }
         done=bool(peg_hole_dis<0.005)
+        _,obs=self.scale(obs=obs)
+        # print('='*50)
+        # print('after scale',obs)
+        self.info=info
+        self.render()
         return obs,reward,done,info
+    def render(self, mode='human'):
+        print(self.info)
+    
+    def close(self):
+        pass
+
+    def scale(self,action=None,obs=None):
+        if action is not None:
+            action[0]=(action[0]+1)*0.25+0.5
+            action[1]=(action[1])*0.5
+            action[2]=(action[2]+1)*0.25
+            action[3]=(action[3]+1)*0.25
+
+        if obs is not None:
+            obs[0]=(obs[0]+1)*0.25+0.5
+            obs[1]=(obs[1])*0.5
+            obs[2]=(obs[2]+1)*0.25
+            obs[3]=(obs[3]+1)*0.25
+            obs[4]=(obs[0]+1)*0.25+0.5
+            obs[5]=(obs[1])*0.5
+            obs[6]=(obs[2]+1)*0.25
+            obs[7]=(obs[0]+1)*0.25+0.5
+            obs[8]=(obs[1])*0.5
+            obs[9]=(obs[2]+1)*0.25
+        return action,obs
         
         
 
