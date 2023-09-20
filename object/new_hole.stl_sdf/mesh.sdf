@@ -1,0 +1,117 @@
+<?xml version='1.0'?>
+<sdf version="1.6"> 
+ 
+         <model name="mesh"> 
+             <static>0</static> 
+             <self_collide>0</self_collide> 
+             <allow_auto_disable>1</allow_auto_disable> 
+ 
+             <frame name="object_frame"> 
+                 <pose frame="/world">0 0 0 0 -0 0 </pose> 
+             </frame> 
+ 
+             <pose frame="/world">0 0 0 0 -0 0</pose> 
+ 
+             <link name="link"> 
+ 
+                 <gravity>1</gravity> 
+                 <self_collide>0</self_collide> 
+                 <kinematic>0</kinematic> 
+ 
+                 <frame name="link_frame"> 
+                     <pose frame="object_frame">0 0 0 0 -0 0</pose> 
+                 </frame> 
+ 
+                 <!-- red green blue offsets: model pivot point --> 
+                 <!-- 32 is just half of the voxelgrid dimension (64)--> 
+                 <pose name="link_frame">-32 -32 -32 0 -0 0</pose> 
+ 
+                 <inertial> 
+                     <mass>-0.01</mass> 
+                     <inertia> 
+                         <!-- http://gazebosim.org/tutorials?tut=inertia&cat=build_robot --> 
+                         <ixx>8e-05</ixx> 
+                         <ixy>-0.0</ixy> 
+                         <ixz>1e-05</ixz> 
+                         <iyy>0.0002</iyy> 
+                         <iyz>0.0</iyz> 
+                         <izz>0.00014</izz> 
+                     </inertia> 
+ 
+                     <frame name="link_inertia_frame"> 
+                         <pose frame="link_frame">0 0 0 0 -0 0</pose> 
+                     </frame> 
+ 
+                     <!-- 
+                     This is the pose of the inertial reference frame, relative to the specified reference frame. 
+                     The origin of the inertial reference frame needs to be at the center of gravity. 
+                     The axes of the inertial reference frame do not need to be aligned with the principal axes of the inertia. 
+                     --> 
+                     <pose frame="link_inertia_frame">-0.0 0.02 0.16 0 0 0                     </pose> 
+                 </inertial> 
+                 
+                 <collision name="collision"> 
+                     <!-- 
+                         Maximum number of contacts allowed between two entities. 
+                         This value overrides the max_contacts element defined in physics. 
+                     --> 
+                     <max_contacts>20</max_contacts> 
+ 
+                     <!-- A frame of reference to which a pose is relative. --> 
+                     <frame name="collision_frame"> 
+                         <pose frame="link_frame">0 0 0 0 -0 0</pose> 
+                     </frame> 
+                     <!-- A position(x,y,z) and orientation(roll, pitch yaw) with respect to the specified frame. --> 
+                     <pose frame="collision_frame">0 0 0 0 -0 0</pose> 
+ 
+                     <geometry> 
+                         <mesh> 
+                             <uri>/home/gao/Desktop/gazebowold/stl2sdf/new_hole.stl_sdf/mesh.stl</uri> 
+                             <!-- <uri>model://mymodel/meshes/model.stl</uri> --> 
+                             <!-- Scaling factor applied to the mesh --> 
+                             <scale>1.0 1.0 1.0</scale> 
+                         </mesh> 
+                     </geometry> 
+                     <!-- http://sdformat.org/spec?ver=1.6&elem=collision#surface_soft_contact --> 
+                     <surface></surface> 
+                 </collision> 
+                 
+                 <visual name="visual"> 
+                     <cast_shadows>1</cast_shadows>
+                     <transparency>0</transparency>
+ 
+                     <frame name="visual_frame"> 
+                         <pose frame="link_frame">0 0 0 0 -0 0</pose>
+                     </frame> 
+                     <pose frame="visual_frame">0 0 0 0 -0 0</pose> 
+ 
+                     <material> 
+ 
+                         <script> 
+                             <uri>file://media/materials/scripts/gazebo.material</uri>
+                             <!-- <name>Gazebo/TurquoiseGlowOutline</name> -->
+                             <name>Gazebo/Green</name>
+                         </script>
+                         <shader type="vertex">
+                           <normal_map>__default__</normal_map>
+                         </shader>
+ 
+                         <lighting>1</lighting> 
+ 		                <ambient>0.15 0.75 0.35 1</ambient> 
+ 		                <diffuse>0.1 0.95 0.25 1</diffuse> 
+ 		                <specular>0.01 0.01 0.01 1</specular> 
+ 		                <emissive>0 0 0 1</emissive> 
+                     </material>
+ 
+                     <geometry> 
+                         <mesh> 
+                             <uri>/home/gao/Desktop/gazebowold/stl2sdf/new_hole.stl_sdf/mesh.stl</uri> 
+                             <!-- <uri>model://mymodel/meshes/model.stl</uri> --> 
+                             <!-- Scaling factor applied to the mesh --> 
+                             <scale>1.0 1.0 1.0</scale> 
+                         </mesh> 
+                     </geometry> 
+                 </visual> 
+             </link> 
+         </model> 
+     </sdf>
