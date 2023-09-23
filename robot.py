@@ -12,6 +12,9 @@ import actionlib
 from std_srvs.srv import Empty
 from tf import TransformListener
 import numpy as np
+import time
+import os
+import subprocess
 
 
 class Robot(object):
@@ -55,6 +58,8 @@ class Robot(object):
       if self.is_gripper_present:
         gripper_group_name = "gripper"
         self.gripper_group = moveit_commander.MoveGroupCommander(gripper_group_name, ns=rospy.get_namespace())
+      self.have_peg = True
+      self.have_hole = True
 
       # rospy.loginfo("Initializing node in namespace " + rospy.get_namespace())
     except Exception as e:
@@ -73,7 +78,7 @@ class Robot(object):
     arm_group.set_named_target(target)
     # Plan the trajectory
     planned_path1 = arm_group.plan()
-    print("planned_path", planned_path1)
+    # print("planned_path", planned_path1)
     # Execute the trajectory and block while it's not finished
     return arm_group.execute(planned_path1, wait=True)
 
@@ -152,27 +157,60 @@ class Robot(object):
     # rospy.loginfo("Planning and going to the Cartesian Pose")
     return arm_group.go(wait=True)
   
+    #move to pose
+  def move_add(self, pose=[0,0,0], tolerance=0.005):
+    arm_group = self.arm_group
+    
+    arm_group.set_goal_position_tolerance(tolerance)
+    current_pose=arm_group.get_current_pose().pose
+    current_pose.position.x+=pose[0]
+    current_pose.position.y+=pose[1]
+    current_pose.position.z+=pose[2]
+    arm_group.set_pose_target(current_pose)
+    # rospy.loginfo("Planning and going to the Cartesian Pose")
+    return arm_group.go(wait=True)
+  
 
   #initial arm peg and hole
   def init_scene(self,peg_pose=[0.,0.,0.],hole_pose=[0.,0.,0.]):
+    self.reset_scene()
     self.reach_named_position('retract')
     # rospy.wait_for_service("gazebo/spawn_sdf_model",timeout=5)
     peg_orientation = Quaternion(1,0,0,0)
     peg_pose=Pose(Point(peg_pose[0],peg_pose[1],peg_pose[2]),peg_orientation)
-    peg_sdf_path='/home/gao/catkin_workspace/peg/model.sdf'
+    peg_sdf_path='/catkin_workspace/src/ros_kortex/kortex_examples/src/move_it/object/peg/model.sdf'
     peg_xml= open(peg_sdf_path,'r').read()
-    hole_orientation = Quaternion(np.sqrt(2)/2,np.sqrt(2)/2,0,0)
+    hole_orientation = Quaternion(np.sqrt(2)/2, np.sqrt(2)/2, 0, 0)
     hole_pose=Pose(Point(hole_pose[0],hole_pose[1],hole_pose[2]),hole_orientation)
-    hole_sdf_path='/home/gao/catkin_workspace/new_hole1/model.sdf'
+    hole_sdf_path='/catkin_workspace/src/ros_kortex/kortex_examples/src/move_it/new_object/hole_new/model.sdf'
     hole_xml= open(hole_sdf_path,'r').read()
     
     self.spawn('peg',peg_xml,"",peg_pose,'world')
     self.spawn('hole',hole_xml,"",hole_pose,'world')
+    print('init scene')
+    self.have_peg = True
+    self.have_hole = True
 
+  def reset_scene(self):
+    p=subprocess.run('roslaunch kortex_gazebo spawn_kortex_robot.launch gripper:=robotiq_2f_85',shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   #clean scene
   def remove_scene(self):
-    self.delete_model('peg')
-    self.delete_model('hole')
+    if self.have_peg:
+      try:
+        self.delete_model('peg')
+      except Exception as e:
+        # print('peg', e)
+        print('Fail to delete, start to reset')
+        self.reset_scene()
+      self.have_peg = False
+    if self.have_hole:
+      try:
+        self.delete_model('hole')
+      except Exception as e:
+        print('Fail to delete, start to reset')
+        self.reset_scene()
+      self.have_hole = False
+    # print('remove_scene')
 
 
   #get arm/peg/hole pose from gazebo
