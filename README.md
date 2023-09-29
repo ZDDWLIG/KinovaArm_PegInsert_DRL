@@ -1,7 +1,7 @@
 # KinovaArm PegInsertTask with DRL
 Train Kinova Gen3 arm to insert the plug into the board in Gazebo with deep reinforcement learning and imitation learning
 # Environmental preparation
-We strongly recommend using docker to deploy environments, and we provide our environment zip pack **dockerup.tar.gz**. 
+We strongly recommend using docker to deploy environments, and we provide our environment zip pack [docker environment](https://drive.google.com/file/d/1Ij1OMNgjWBoDzcPT9dXCeAHEGDKHxjJC/view?usp=drive_link). 
 - ### Get the docker environment
  ```
 tar -zxvf dockerup.tar.gz
