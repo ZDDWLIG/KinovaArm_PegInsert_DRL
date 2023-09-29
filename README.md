@@ -1,24 +1,18 @@
 # KinovaArm PegInsertTask with DRL
-Train Kinova Gen3 arm in Gazebo with deep reinforcement learning
-# 启动docker
-- ### 将tar.gz 解压缩，会生成一个tar包
+Train Kinova Gen3 arm to insert the plug into the board in Gazebo with deep reinforcement learning and imitation learning
+# Environmental preparation
+We strongly recommend using docker to deploy environments, and we provide our environment zip pack **dockerup.tar.gz**. 
+- ### Get the docker environment
  ```
 tar -zxvf dockerup.tar.gz
+docker  load  <  dockerup.tar
  ```
-- ### 将tar包生成镜像
- ```
- docker  load  <  dockerup.tar
-  ```
-- ### docker查看镜像指令
-```
-docker images
-```
-- ### 主系统运行(为了容器能显示界面)
+- ### Get the graphical display package
 ```
 sudo apt-get install x11-xserver-utils
 xhost +
 ```
-- ### 镜像生成容器
+- ### Activate docker
 ```
 docker run -d \
   -v /etc/localtime:/etc/localtime:ro \
@@ -31,33 +25,28 @@ docker run -d \
   -e NVIDIA_VISIBLE_DEVICES=all \
   --name pytorch \
   dockerup
+docker exec -ti pytorch /bin/bash
 ```
-- ### 查看正在运行的容器
-```
-docker ps
-```
-- ### 进入容器
-```docker exec -ti pytorch /bin/bash```
+You can also deploy the environment step by step by referring to  [kinova](https://github.com/Kinovarobotics/ros_kortex)
 
-# 开仿真环境
+# Train
 
-- ### 运行
+- ### Go to the workspace directory
 
  ```
-cd catkin_workspace
-
+cd /catkin_workspace
+ ```
+- ### Start gazebo and load simulated arm
+Load configuration file and open Gazebo to visualize， if you dont want visualization then add argument **gazebo_gui:=false** （Can't speed up training anyway).
+ ```
 source devel/setup.bash
-roslaunch kortex_driver kortex_driver.launch gripper:=robotiq_2f_85
-roslaunch kortex_gazebo spawn_kortex_robot.launch gripper:=robotiq_2f_85
-
+roslaunch kortex_gazebo spawn_kortex_robot.launch gripper:=robotiq_2f_85 start_rviz:=false
+ ```
+- ### Start training
+Open a new terminal and use the following commands to start training
+ ```
 source devel/setup.bash
 roslaunch kortex_examples moveit_example.launch
  ```
 
-# 退出容器
-- ctrl+p+q 返回主系统
 
- ```
-docker stop pytorch #停止运行容器
-docker start pytorch #运行容器
- ```
