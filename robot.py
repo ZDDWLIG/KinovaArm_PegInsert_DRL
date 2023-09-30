@@ -132,7 +132,7 @@ class Robot(object):
     gripper_max_absolute_pos = gripper_joint.max_bound()
     gripper_min_absolute_pos = gripper_joint.min_bound()
     try:
-      val = gripper_joint.move(relative_position * (gripper_max_absolute_pos - gripper_min_absolute_pos) + gripper_min_absolute_pos, True)
+      val = gripper_joint.move(relative_position, True)
       return val
     except:
       return False 
