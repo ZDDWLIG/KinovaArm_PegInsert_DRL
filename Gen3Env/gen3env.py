@@ -21,8 +21,8 @@ class gen3env(gym.Env):
     def __init__(self):
         super(gen3env,self).__init__()
         self.robot=Robot()
-        self.peg_pose=[0.45,0,0.3]  #[0.1,0,0.3] 
-        self.hole_pose=[0.8,-0.2,0.3] #[1.,-0.2,0.3] 
+        self.peg_pose=[-0.2,0,0.3] # [0.45,0,0.3]  #[0.1,0,0.3] 
+        self.hole_pose=[0.7,-0.2,0.3] # [0.8,-0.2,0.3] #[1.,-0.2,0.3] 
         self.info=None
         self.fail_num=0
         self.step_num=0
@@ -36,6 +36,7 @@ class gen3env(gym.Env):
     
 
     def reset(self):
+        self.robot.reach_gripper_position(0)
         self.robot.remove_scene()
         self.robot.init_scene(peg_pose=self.peg_pose,hole_pose=self.hole_pose)
         obs=self.get_obs()
@@ -70,17 +71,18 @@ class gen3env(gym.Env):
         end_y=end_effect_pose.position.y
         end_z=end_effect_pose.position.z
         end_pose = (end_x, end_y, end_z)
-        print('end:\t {:.3} {:.3} {:.3}'.format(*end_pose))
-        print('fing:\t {:.3} {:.3} {:.3}'.format(*finger_pose))
-        print('peg:\t {:.3} {:.3} {:.3}'.format(*peg_pos))
-        print('hole:\t {:.3} {:.3} {:.3}'.format(*hole_pos))
+        # print('end:\t {:.3} {:.3} {:.3}'.format(*end_pose))
+        # print('fing:\t {:.3} {:.3} {:.3}'.format(*finger_pose))
+        # print('peg:\t {:.3} {:.3} {:.3}'.format(*peg_pos))
+        # print('hole:\t {:.3} {:.3} {:.3}'.format(*hole_pos))
         # input()
 # vrep
 
 
     def do_sim(self,action):
         action,_=self.scale(action=action)
-        self.success=self.robot.move_add(pose=action[:-1])
+        # self.success=self.robot.move_add(pose=action[:-1])
+        self.success=self.robot.move(pose=action[:-1])
         self.robot.reach_gripper_position(action[-1])
         if not self.success:
             self.fail_num+=1
@@ -96,7 +98,7 @@ class gen3env(gym.Env):
         peg_z += 0.04
         hole_x,hole_y,hole_z=self.robot.get_obj_pose('hole')
         obs=np.array([end_x,end_y,end_z,gripper_opening,peg_x,peg_y,peg_z,hole_x,hole_y,hole_z])
-        print('get_obs')
+        # print('get_obs')
         return obs 
     
     def compute_reward(self,action,obs):
@@ -140,13 +142,13 @@ class gen3env(gym.Env):
 
         #     return [insert_reward,peg_hole_dis]
         reach_rew,grab_rew=reach_reward()
-        # insert_rew=insert_reward()
+        insert_rew=insert_reward()
         # pick_rew=pick_reward()
         # insert_rew,peg_hole_dis=insert_reward()
         # reward=reach_rew+pick_rew+insert_rew
         # return[reward,reach_rew,pick_rew,insert_rew,peg_hole_dis]  
         # reward=(reach_rew+grab_rew+insert_rew+self.success*0.02)*0.4
-        reward=(reach_rew+grab_rew+self.success*0.02)*0.8
+        reward=(reach_rew+grab_rew+self.success*0.02+insert_rew)*0.8
         # return reward,reach_rew,grab_rew,insert_rew,peg_hole_dis
         return reward,reach_rew,grab_rew,peg_hole_dis
 
@@ -155,16 +157,18 @@ class gen3env(gym.Env):
 
     def step(self,action):
         self.tot_steps += 1
+        # print('='*50)
+        # print(action)
         self.do_sim(action)
         obs=self.get_obs()
         # print('='*50)
         # print('before scale',obs)
         # reward,reach_rew,grab_rew,insert_rew,peg_hole_dis=self.compute_reward(action,obs)
         reward,reach_rew,grab_rew,peg_hole_dis=self.compute_reward(action,obs)
-        if peg_hole_dis>0.8:
-            self.robot.reset_scene()
+        # if peg_hole_dis>0.8:
+            # self.robot.reset_scene()
         self.step_num+=1
-        done=bool(peg_hole_dis<0.005) or self.tot_steps == 70 or self.fail_num == 5    
+        done=bool(peg_hole_dis<0.005) or self.tot_steps == 90 or self.fail_num == 5 or peg_hole_dis > 0.95 * 1.5
         if done:
             self.step_num=0
             self.fail_num=0
@@ -179,7 +183,7 @@ class gen3env(gym.Env):
             "grab_rew":grab_rew,
             # "insert_rew":insert_rew,
             "peg_hole_dis":peg_hole_dis,
-            "success":not done,
+            "success": done,
             "fail_num":self.fail_num,
             "truncated":truncated
         }
@@ -194,22 +198,31 @@ class gen3env(gym.Env):
 
     def scale(self,action=None,obs=None):
         if action is not None:
-            action[0]=(action[0])*0.025 # x > 0
-            action[1]=(action[1])*0.025
-            action[2]=(action[2])*0.025 # z > 0
-            action[3]=(action[3]+1)*0.25
+            # npaction[:,0] = (npaction[:,0] - 0.2) / 0.2 - 1.3
+            # npaction[:,1] = (npaction[:,1] / -0.1) / 1.1 - 1
+            # npaction[:,2] = (npaction[:,2] - 0.05) / 0.125 - 0.75
+            # npaction[:,3] = (npaction[:,3] / 0.2) - 1
+            action[0] = (action[0] + 1.3) * 0.2 + 0.2
+            action[1] = (action[1] + 1) * 1.1 * -0.1
+            action[2] = (action[2] + 0.75) * 0.125 + 0.05
+            action[3] = (action[3] + 1) * 0.2
+        # if action is not None:
+        #     action[0]=(action[0])*0.025 # x > 0
+        #     action[1]=(action[1])*0.025
+        #     action[2]=(action[2])*0.025 # z > 0
+        #     action[3]=(action[3]+1)*0.25
 
-        if obs is not None:
-            obs[0]=(obs[0]+1)*0.25+0.5
-            obs[1]=(obs[1])*0.5
-            obs[2]=(obs[2]+1)*0.25
-            obs[3]=(obs[3]+1)*0.25
-            obs[4]=(obs[0]+1)*0.25+0.5
-            obs[5]=(obs[1])*0.5
-            obs[6]=(obs[2]+1)*0.25
-            obs[7]=(obs[0]+1)*0.25+0.5
-            obs[8]=(obs[1])*0.5
-            obs[9]=(obs[2]+1)*0.25
+        # if obs is not None:
+        #     obs[0]=(obs[0]+1)*0.25+0.5
+        #     obs[1]=(obs[1])*0.5
+        #     obs[2]=(obs[2]+1)*0.25
+        #     obs[3]=(obs[3]+1)*0.25
+        #     obs[4]=(obs[0]+1)*0.25+0.5
+        #     obs[5]=(obs[1])*0.5
+        #     obs[6]=(obs[2]+1)*0.25
+        #     obs[7]=(obs[0]+1)*0.25+0.5
+        #     obs[8]=(obs[1])*0.5
+        #     obs[9]=(obs[2]+1)*0.25
         return action,obs
         
         
