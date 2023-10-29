@@ -1,7 +1,10 @@
+import sys
+sys.path.append('/usr/local/lib/python3.8/dist-packages/')
 import numpy as np
 import torch
 import ot
 import numpy as np
+
 
 def optimal_transport_plan(X,
                            Y,

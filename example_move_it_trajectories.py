@@ -17,7 +17,7 @@ from std_srvs.srv import Empty
 from tf import TransformListener
 from robot import Robot
 # from task import peg_in
-from gen3env import gen3env as RobotEnv
+# from gen3env import gen3env as RobotEnv
 import gym
 import torch.nn as nn
 from network import MLPModel, LSTMModel
@@ -30,16 +30,6 @@ import numpy as np
 # from module import TD3,train
 from stable_baselines3 import TD3
 import subprocess
-import agent.potil_lstm as agent
-import agent.utils as utils
-# import fake_env
-from logger import Logger
-from pathlib import Path
-import queue
-import random
-import numpy as np
-import torch
-from expert_dataloader import ExpertLoader
 
 def normalize_data(data):
     min_vals = np.array([0.299900302, -0.17102845, 0.05590736, -0.000087572115])
@@ -216,9 +206,27 @@ def bc_run():
 
                     obs = next_obs
 
+# if __name__ == '__main__':
+    # test()
+
+
+
+import agent.potil_lstm as agent
+import agent.utils as utils
+# import fake_env
+from logger import Logger
+from pathlib import Path
+import queue
+import random
+
+
+import numpy as np
+import torch
+from expert_dataloader import ExpertLoader
+
 torch.backends.cudnn.benchmark = True
 
-potil_agent = agent.POTILAgent(obs_shape=[10, 1], action_shape=[4, 1], device='cuda', lr=1e-3, feature_dim=512,
+potil_agent = agent.POTILAgent(obs_shape=[10, 1], action_shape=[4, 1], device='cuda', lr=1e-5, feature_dim=512,
                                hidden_dim=128, critic_target_tau=0.01, num_expl_steps=0,
                                update_every_steps=2, stddev_schedule='linear(0.2,0.04,500000)', stddev_clip=0.1, use_tb=True, augment=True,
                                rewards='sinkhorn_cosine', sinkhorn_rew_scale=200, update_target_every=10000,
@@ -263,7 +271,7 @@ class ReplayBuffer:
 class Trainer():
     def __init__(self):
         self.num_train_frames = 2100000
-        self.action_repeat = 2
+        self.action_repeat = 1
         self.num_seed_frames = 0
         self.eval_every_frames = 20000
         self.bc_regularize = True
@@ -271,7 +279,7 @@ class Trainer():
         self.obs_type = 'features'
         self.num_demos = 10
         self.batch_size = 512
-        self.max_seq_len = 10
+        self.max_seq_len = 1
         self.train_env = gym.make(id='peg_in_hole-v0')
         self.agent = potil_agent
         self._global_step = 0
@@ -284,7 +292,7 @@ class Trainer():
         # self.expert_reward = np.random.randn(200)
         self.expert_replay_iter = iter(self.expert_replay_loader)
         self._replay_iter = None
-        self.replay_loader = ReplayBuffer(self.batch_size, 1e4) # obs, action, reward, discount, next_obs
+        self.replay_loader = ReplayBuffer(self.batch_size, 1.5e5) # obs, action, reward, discount, next_obs
         # self.load_snapshot(self.work_dir / 'snapshot.pt')
 
 
@@ -461,10 +469,119 @@ class Trainer():
             self._replay_iter = iter(self.replay_loader)
         return self._replay_iter
 
+def test_gripper():
+    env=gym.make('peg_in_hole-v0')
+    env.robot.move(pose=[0.4,0.2,0.3])
+    env.robot.reach_gripper_position(0.8)
+    env.reset()
 
+def test_bc():
+    # potil_agent.actor = torch.load('/catkin_workspace/src/ros_kortex/kortex_examples/src/move_it/BC_actor_dist.pkl')
+    # nstep = 5
+    # env=gym.make('peg_in_hole-v0')
+    # seq_queue = queue.Queue(nstep)
+    # env.reset()
+    # env.robot.move(pose=[0.3, 0, 0.3], tolerance=0.0001)
+    # expert_loader = ExpertLoader(nstep, 50)
+    # test_data = expert_loader.read_data(0,1)
+    # for i in range(nstep):
+    #     action = test_data[1][i]
+    #     time_step = env.step(action)
+    #     seq_queue.put(time_step[0])
+    
+    # # obs
+    # # for i in range(nstep):
+    # #     seq_queue.put(time_step[0])
+    # obs = np.stack(seq_queue.queue)
+    # for i in range(80):
+    #     with torch.no_grad(), utils.eval_mode(potil_agent):
+    #         action = potil_agent.act(obs.astype(np.float32),i,eval_mode=True)
+    #     time_step = env.step(action)
+    #     # obs,reward,done,truncated,info
+    #     done = bool(time_step[2])
+    
+    #     if done:
+    #         break
+    #     if seq_queue.qsize() == nstep:
+    #         seq_queue.get()
+    #     seq_queue.put(time_step[0])
+    #     obs = np.stack(seq_queue.queue)
+
+    potil_agent.actor = torch.load('/catkin_workspace/src/ros_kortex/kortex_examples/src/move_it/BC_actor_dist.pkl')
+    env=gym.make('peg_in_hole-v0')
+    env.reset()
+    env.robot.move(pose=[0.3, 0, 0.3], tolerance=0.0001)
+    obs = env.get_obs()
+    hidden = None
+    for i in range(80):
+        with torch.no_grad(), utils.eval_mode(potil_agent):
+            # action = potil_agent.act(obs.astype(np.float32),i,eval_mode=True)
+            action, hidden = potil_agent.act_with_hid(obs.astype(np.float32)[:4], hidden)
+        time_step = env.step(action)
+        # obs,reward,done,truncated,info
+        done = bool(time_step[2])
+        if done:
+            break
+        obs = time_step[0]
+    
+
+
+def test_expert():
+    nstep = 10
+    expert_loader = ExpertLoader(nstep, 50)
+    expert_iter = iter(expert_loader)
+    test_data = expert_loader.read_data(0,1)
+    state, action = test_data
+    seq_queue = queue.Queue(nstep)
+    test_data_storage = []
+    for i in range(nstep):
+        seq_queue.put(state[0])
+    for i in range(state.shape[0]):
+        seq_queue.get()
+        seq_queue.put(state[i])
+        test_data_storage.append((np.stack(seq_queue.queue), action[i]))
+
+    env=gym.make('peg_in_hole-v0')
+    seq_queue = queue.Queue(nstep)
+    time_steps = list()
+    time_step = [env.reset()]
+    # obs
+    time_steps.append(time_step)
+    for i in range(nstep):
+        seq_queue.put(time_step[0])
+    obs = np.stack(seq_queue.queue)
+
+    for data in test_data_storage:
+        action = data[1]
+        time_step = env.step(action)
+        # obs,reward,done,truncated,info
+        done = bool(time_step[2])
+        if done:
+            break
+        if seq_queue.qsize() == nstep:
+            seq_queue.get()
+        seq_queue.put(time_step[0])
+        obs = np.stack(seq_queue.queue)
+    
+        
 
 
 if __name__ == '__main__':
-    trainer = Trainer()
-    trainer.train()
+    test_expert()
+
+    # test_bc()
+
+    # test_gripper()
+
+    # potil_agent.actor = torch.load('/catkin_workspace/src/ros_kortex/kortex_examples/src/move_it/BC_actor_dist.pkl')
+    # trainer = Trainer()
+    # trainer.train()
+
+    
+    # env=gym.make(id='peg_in_hole-v0')
+    # env.reset()
+    # peg_pos=env.robot.get_obj_pose("peg")
+    # hole_pos=env.robot.get_obj_pose("hole")
+    # print(peg_pos)
+    # print(hole_pos)
 

@@ -3,7 +3,7 @@
   <model name='hole_new3'>
     <link name='link_0'>
       <inertial>
-        <mass>1</mass>
+        <mass>100</mass>
         <inertia>
           <ixx>0.166667</ixx>
           <ixy>0</ixy>

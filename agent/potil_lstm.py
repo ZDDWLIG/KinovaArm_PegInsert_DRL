@@ -1,4 +1,4 @@
-import hydra
+# import hydra
 import numpy as np
 import torch
 import torch.nn as nn
@@ -14,6 +14,7 @@ from encoder import Encoder
 from rewarder import optimal_transport_plan, cosine_distance, euclidean_distance
 import time
 import copy
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
 
@@ -28,6 +29,10 @@ class LSTMActor(nn.Module):
         out = out[-1:].permute(1, 0, 2).squeeze(dim=1)
         out = self.lstm.norm(out)
         return out
+    
+    def forward_with_hid(self, x, hidden=None):
+        return self.lstm.forward_with_hid(x, hidden)
+
 
     def forward(self, obs, std):
         mu = self.lstm(obs)
@@ -210,8 +215,11 @@ class POTILAgent:
         if bc_regularize:
             stddev = 0.1
             dist_bc = self.actor(obs_bc, stddev)
+            # print(action_bc)
+            # print(dist_bc.log_prob(action_bc))
             log_prob_bc = dist_bc.log_prob(action_bc).sum(-1, keepdim=True)
-            actor_loss += - log_prob_bc.mean() * bc_weight * 0.03
+            # 0.02 50
+            actor_loss += - log_prob_bc.mean() * bc_weight * 2500
 
         # optimize actor
         self.actor_opt.zero_grad(set_to_none=True)
@@ -228,8 +236,8 @@ class POTILAgent:
             metrics['regularized_rl_loss'] = -Q.mean().item() * (1 - bc_weight)
             metrics['rl_loss'] = -Q.mean().item()
             if bc_regularize:
-                metrics['regularized_bc_loss'] = - log_prob_bc.mean().item() * bc_weight * 0.03
-                metrics['bc_loss'] = - log_prob_bc.mean().item() * 0.03
+                metrics['regularized_bc_loss'] = - log_prob_bc.mean().item() * bc_weight * 2500
+                metrics['bc_loss'] = - log_prob_bc.mean().item() * 2500
 
         return metrics
 
@@ -386,4 +394,70 @@ class POTILAgent:
             self.encoder_opt = torch.optim.Adam(self.encoder.parameters(), lr=self.lr)
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=self.lr)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=self.lr)
+    
+    def train_bc_dist(self, obs_bc, action_bc):
+        # global schedule
+        # if schedule is False:
+            # self.schedule = CosineAnnealingLR(self.actor_opt, T_max=50)
+            # schedule = True
 
+        metrics = dict()
+
+        stddev = 0.01
+        dist_bc = self.actor(obs_bc, stddev)
+        log_prob_bc = dist_bc.log_prob(action_bc).sum(-1, keepdim=True)
+        # 0.02 50
+        actor_loss = -log_prob_bc.mean() * 0.0001
+
+        # optimize actor
+        self.actor_opt.zero_grad(set_to_none=True)
+        actor_loss.backward()
+        self.actor_opt.step()
+        # self.schedule.step()
+        
+        metrics['bc_loss'] = actor_loss.item()
+
+        return metrics
+    
+    def train_bc_norm(self, obs_bc, action_bc):
+        metrics = dict()
+
+        stddev = 0.01
+        dist_bc = self.actor(obs_bc, stddev)
+        loss = torch.abs(dist_bc.mean - action_bc).sum(-1)
+        actor_loss = loss.mean() * 0.01
+
+        # optimize actor
+        self.actor_opt.zero_grad(set_to_none=True)
+        actor_loss.backward()
+        self.actor_opt.step()
+        
+        metrics['bc_loss'] = actor_loss.item()
+
+        return metrics
+    
+    def train_bc_norm_step(self, obs_bc, action_bc):
+        metrics = dict()
+
+        out, hidden = self.actor.forward_with_hid(obs_bc)
+        loss = torch.abs(out - action_bc).sum(-1)
+        actor_loss = loss.mean() * 0.1
+
+        # optimize actor
+        self.actor_opt.zero_grad(set_to_none=True)
+        actor_loss.backward()
+        self.actor_opt.step()
+        
+        metrics['bc_loss'] = actor_loss.item()
+
+        return metrics
+    
+    def act_with_hid(self, obs, hidden=None):
+        obs = torch.as_tensor(obs, device=self.device)
+
+        obs = self.encoder(obs.unsqueeze(0)) if self.use_encoder else obs.unsqueeze(0)
+
+        action, hidden = self.actor.forward_with_hid(obs, hidden)
+        return action.cpu().numpy()[0], hidden
+
+schedule = False

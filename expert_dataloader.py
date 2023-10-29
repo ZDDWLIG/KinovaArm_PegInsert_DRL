@@ -44,8 +44,8 @@ def read_all_data(csv_dir):
 
 
 #距离过小或夹爪变化小于 gripper_change_deta 删除本组数据
-def data_processing(state, delt, gripper_change_delt):
-    p = state[0,:]
+def data_processing(state, delt, gripper_change_delt, di=0):
+    p = state[di,:]
     delete_line = []
     for i in range(1,state.shape[0]):
         distance = np.sum(np.square(p[:3]-state[i][:3]))  
@@ -55,6 +55,13 @@ def data_processing(state, delt, gripper_change_delt):
             delete_line.append(i)
         else:
             p = state[i]
+            if di != 0:
+                choose = i + random.randint(-1, 0)
+                choose = min(max(choose, 0), state.shape[0] - 1)
+                p = (state[choose] * 0.5 + state[i] * 0.5)
+                delete_line.append(i)
+                if choose in delete_line:
+                    delete_line.remove(choose)
     # processed_data = np.delete(state,delete_line,0)
     return delete_line
 
@@ -95,24 +102,67 @@ class ExpertLoader():
     def __init__(self, nstep, batch):
         self.nstep = nstep
         self.batch=batch
-        csv_dir = "/catkin_workspace/src/ros_kortex/kortex_examples/src/move_it_zuo/expert_data/new_hole_optimize2/"
+        csv_dir = "/catkin_workspace/src/ros_kortex/kortex_examples/src/move_it_zrc/expert_data/new_hole_optimize2/"
         self.data = read_all_data(csv_dir)
         self.data_list = []
         self.data_list.append(self.read_data(0, 1))
         self.data_list.append(self.read_data(2, 3))
         self.data_list.append(self.read_data(6, 7))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 2))
+        self.data_list.append(self.read_data(2, 3, 2))
+        self.data_list.append(self.read_data(6, 7, 2))
+
+        self.data_list.append(self.read_data(0, 1))
+        self.data_list.append(self.read_data(2, 3))
+        self.data_list.append(self.read_data(6, 7))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 2))
+        self.data_list.append(self.read_data(2, 3, 2))
+        self.data_list.append(self.read_data(6, 7, 2))
+
         self.data_storage = []
         for data in self.data_list:
             state, action = data
             seq_queue = queue.Queue(self.nstep)
-            for i in range(self.nstep):
-                seq_queue.put(state[0])
-            for i in range(len(data)):
-                seq_queue.get()
+            for i in range(self.nstep - 1):
+                seq_queue.put(state[i])
+            for i in range(self.nstep - 1, state.shape[0]):
                 seq_queue.put(state[i])
                 self.data_storage.append((np.stack(seq_queue.queue), action[i]))
+                seq_queue.get()
+        # print(len(self.data_storage))
+        # actions = np.stack([data[1] for data in self.data_storage])
+        # print(actions.shape)
+        # print(np.max(actions, axis=0))
+        # print(np.min(actions, axis=0))
+        
 
-    def read_data(self, stateid, actionid):
+    def read_data(self, stateid, actionid, di=0):
         state = self.data.iloc[stateid].to_numpy()
         npstate = np.array([np.fromstring(item[1:-1], sep=' ')
                         for item in state if not isinstance(item, float)])  # 将state变为(?, 4)的格式，一行代表一个state
@@ -121,9 +171,9 @@ class ExpertLoader():
                              for item in action if not isinstance(item, float)])
         npstate[:,:4] = normalize_data(npstate[:,:4])
         npaction = normalize_data(npaction)
-        delt = 1e-3
+        delt = 5e-3
         gripper_change_delt = 0.02/(0.36635616+0.000087572115)
-        del_state = data_processing(npstate, delt, gripper_change_delt)
+        del_state = data_processing(npstate, delt, gripper_change_delt, di=di)
         # del_action = data_processing(npaction, delt, gripper_change_delt)
         del_action = []
         del_lines = list(set(del_state + del_action))
@@ -131,15 +181,121 @@ class ExpertLoader():
         npaction = np.delete(npaction,del_lines,0)
         npstate[:,:4] = origin_data(npstate[:,:4])
         npaction = origin_data(npaction)
-        # action[0] = (action[0] + 1) * 0.2 + 0.2
-        # action[1] = (action[1] + 1) * -0.075
+        # action[0] = (action[0] + 1.3) * 0.2 + 0.2
+        # action[1] = (action[1] + 1) * 1.1 * -0.1
         # action[2] = (action[2] + 1) * 0.125 + 0.05
         # action[3] = (action[3] + 1) * 0.2
-        npaction[:,0] = (npaction[:,0] - 0.2) / 0.2 - 1.3
-        npaction[:,1] = (npaction[:,1] / -0.1) / 1.1 - 1
-        npaction[:,2] = (npaction[:,2] - 0.05) / 0.125 - 0.75
-        npaction[:,3] = (npaction[:,3] / 0.2) - 1
-        return npstate, npaction
+        npaction[:,0] = (npaction[:,0] - 0.2) / 0.2 - 1.31
+        npaction[:,1] = (npaction[:,1] / -0.11) / 1.1 - 0.84
+        npaction[:,2] = (npaction[:,2] - 0.05) / 0.15 - 0.83
+        npaction[:,3] = (npaction[:,3] / 0.215) - 0.82
+        return npstate.astype(np.float32), npaction.astype(np.float32)
+        
+    def __iter__(self):
+        while True:
+            samples = random.choices(self.data_storage, k=self.batch)
+            # print([i[0].shape for i in samples])
+            samples = [np.stack([x[i] for x in samples]) for i in range(len(samples[0]))]
+            # [batch, len, obs] [batch, act]
+            yield samples
+
+
+class ExpertLoader_each_step():
+    def __init__(self, nstep, batch):
+        self.nstep = nstep
+        self.batch=batch
+        csv_dir = "/catkin_workspace/src/ros_kortex/kortex_examples/src/move_it_zrc/expert_data/new_hole_optimize2/"
+        self.data = read_all_data(csv_dir)
+        self.data_list = []
+        self.data_list.append(self.read_data(0, 1))
+        self.data_list.append(self.read_data(2, 3))
+        self.data_list.append(self.read_data(6, 7))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 2))
+        self.data_list.append(self.read_data(2, 3, 2))
+        self.data_list.append(self.read_data(6, 7, 2))
+
+        self.data_list.append(self.read_data(0, 1))
+        self.data_list.append(self.read_data(2, 3))
+        self.data_list.append(self.read_data(6, 7))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 1))
+        self.data_list.append(self.read_data(2, 3, 1))
+        self.data_list.append(self.read_data(6, 7, 1))
+
+        self.data_list.append(self.read_data(0, 1, 2))
+        self.data_list.append(self.read_data(2, 3, 2))
+        self.data_list.append(self.read_data(6, 7, 2))
+
+        self.data_storage = []
+        for data in self.data_list:
+            state, action = data
+            seq_queue = queue.Queue(self.nstep)
+            seq_queue_act = queue.Queue(self.nstep)
+            for i in range(self.nstep - 1):
+                seq_queue.put(state[i])
+                seq_queue_act.put(action[i])
+            for i in range(self.nstep - 1, state.shape[0]):
+                seq_queue.put(state[i])
+                seq_queue_act.put(action[i])
+                self.data_storage.append((np.stack(seq_queue.queue), np.stack(seq_queue_act.queue)))
+                seq_queue.get()
+                seq_queue_act.get()
+        # print(len(self.data_storage))
+        # actions = np.stack([data[1] for data in self.data_storage])
+        # print(actions.shape)
+        # print(np.max(actions, axis=0))
+        # print(np.min(actions, axis=0))
+        
+
+    def read_data(self, stateid, actionid, di=0):
+        state = self.data.iloc[stateid].to_numpy()
+        npstate = np.array([np.fromstring(item[1:-1], sep=' ')
+                        for item in state if not isinstance(item, float)])  # 将state变为(?, 4)的格式，一行代表一个state
+        action = self.data.iloc[actionid].to_numpy()
+        npaction = np.array([np.fromstring(item[1:-1], sep=' ') 
+                             for item in action if not isinstance(item, float)])
+        npstate[:,:4] = normalize_data(npstate[:,:4])
+        npaction = normalize_data(npaction)
+        delt = 5e-3
+        gripper_change_delt = 0.02/(0.36635616+0.000087572115)
+        del_state = data_processing(npstate, delt, gripper_change_delt, di=di)
+        # del_action = data_processing(npaction, delt, gripper_change_delt)
+        del_action = []
+        del_lines = list(set(del_state + del_action))
+        npstate = np.delete(npstate,del_lines,0)
+        npaction = np.delete(npaction,del_lines,0)
+        npstate[:,:4] = origin_data(npstate[:,:4])
+        npaction = origin_data(npaction)
+        # action[0] = (action[0] + 1.3) * 0.2 + 0.2
+        # action[1] = (action[1] + 1) * 1.1 * -0.1
+        # action[2] = (action[2] + 1) * 0.125 + 0.05
+        # action[3] = (action[3] + 1) * 0.2
+        npaction[:,0] = (npaction[:,0] - 0.2) / 0.2 - 1.31
+        npaction[:,1] = (npaction[:,1] / -0.11) / 1.1 - 0.84
+        npaction[:,2] = (npaction[:,2] - 0.05) / 0.15 - 0.83
+        npaction[:,3] = (npaction[:,3] / 0.215) - 0.82
+        return npstate.astype(np.float32), npaction.astype(np.float32)
         
     def __iter__(self):
         while True:
